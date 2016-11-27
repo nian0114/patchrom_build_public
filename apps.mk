@@ -14,14 +14,17 @@ ALL_MIUI_PRIV_APPS :=
 $(foreach app, $(subst .apk,,$(shell find $(PREBUILT_PRIV_APP_APK_DIR) -name "*.apk" -exec basename {} \;)), \
 	    $(eval ALL_MIUI_PRIV_APPS += $(app)))
 
-MIUI_PRIV_APPS := $(filter-out $(MIUI_APP_BLACKLIST),$(ALL_MIUI_PRIV_APPS))
+MIUI_PRIV_APPS := $(filter-out $(MIUI_APP_BLACKLIST) $(VENDOR_APPS),$(ALL_MIUI_PRIV_APPS))
 
 
 ALL_MIUI_APPS :=
 $(foreach app, $(subst .apk,,$(shell find $(PREBUILT_APP_APK_DIR) -name "*.apk" -exec basename {} \;)), \
 	        $(eval ALL_MIUI_APPS += $(app)))
 
-MIUI_APPS := $(filter-out $(MIUI_APP_BLACKLIST),$(ALL_MIUI_APPS))
+MIUI_APPS := $(filter-out $(MIUI_APP_BLACKLIST) $(VENDOR_PRIV_APPS),$(ALL_MIUI_APPS))
+
+$(call copy-apks-to-target, $(MIUI_APPS), $(PREBUILT_APP_APK_DIR), $(TARGET_APP_DIR))
+$(call copy-apks-to-target, $(MIUI_PRIV_APPS), $(PREBUILT_PRIV_APP_APK_DIR), $(TARGET_PRIV_APP_DIR))
 
 TARGET_APPS := $(foreach app_name, $(MIUI_APPS),$(TARGET_APP_DIR)/$(app_name)/$(app_name).apk) \
 	$(foreach app_name, $(MIUI_PRIV_APPS),$(TARGET_PRIV_APP_DIR)/$(app_name)/$(app_name).apk) \
@@ -32,9 +35,11 @@ define miui_app_mod_template
 ifeq ($(wildcard $(PREBUILT_APP_APK_DIR)/$(1)/$(1).apk),)
 out-apk-path-$(1) := $(TARGET_PRIV_APP_DIR)/$(1)
 prebuilt-apk-path-$(1) := $(PREBUILT_PRIV_APP_APK_DIR)/$(1)/$(1).apk
+target-apk-path-$(1) := $(TARGET_PRIV_APP_DIR)/$(1)/$(1).apk
 else
 out-apk-path-$(1) := $(TARGET_APP_DIR)/$(1)
 prebuilt-apk-path-$(1) := $(PREBUILT_APP_APK_DIR)/$(1)/$(1).apk
+target-apk-path-$(1) := $(TARGET_APP_DIR)/$(1)/$(1).apk
 endif
 source-files-for-$(1) := $$(call all-files-under-dir,$(1))
 apkcert-$(1) := $$(shell $(GET_APK_CERT) $(1).apk $(MIUI_APK_CERT_TXT))
@@ -63,7 +68,9 @@ endif
 	$(hide) mkdir -p $$(out-apk-path-$(1))
 	$(hide) cp -rf $(TARGET_OUT_DIR)/$(1).apk $$(out-apk-path-$(1))/$(1).apk
 
-TARGET_APPS += $(TARGET_OUT_DIR)/$(1).apk
+$(call copy-one-file,$(TARGET_OUT_DIR)/$(1).apk,$$(target-apk-path-$(1)))
+
+TARGET_APPS += $$(target-apk-path-$(1))
 endef
 
 $(foreach app, $(MOD_MIUI_APPS) , \
