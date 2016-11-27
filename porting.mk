@@ -88,7 +88,7 @@ $(TARGET_OUT_DIR)/$(1).jar: $(2)_miui $$(source-files-for-$(1))
 	@echo ">>> build $$@..."
 	$(hide) rm -rf $(2)
 	$(hide) cp -r $(1).jar.out/ $(2)
-	$(ADDMIUI) $(PORT_ROOT)/android/base-framework/$(1).jar.out $(2)_miui $(2)
+	$(ADDMIUI) $(PORT_ROOT)/android/$(1).jar.out $(2)_miui $(2)
 	$(APKTOOL) b $(2) -o $$@
 	@echo "<<< build $$@ completed!"
 
@@ -181,6 +181,8 @@ $(foreach jar, $(MIUI_JARS), \
 $(foreach jar, $(PHONE_JARS), \
 	$(eval $(call JAR_PHONE_template,$(jar))))
 
+$(call copy-apks-to-target, $(MIUI_APPS), $(PREBUILT_APP_APK_DIR), $(TARGET_APP_DIR))
+$(call copy-apks-to-target, $(MIUI_PRIV_APPS), $(PREBUILT_PRIV_APP_APK_DIR), $(TARGET_PRIV_APP_DIR))
 $(eval $(call copy-one-file,$(TARGET_OUT_DIR)/framework-ext-res.apk,$(TARGET_FRAMEWORK_DIR)/framework-ext-res/framework-ext-res.apk))
 $(eval $(call copy-one-file,$(TARGET_OUT_DIR)/framework-res.apk,$(TARGET_FRAMEWORK_DIR)/framework-res.apk))
 
@@ -247,6 +249,12 @@ $(APKTOOL_INCLUDE_MIUI_RES): $(PREBUILT_RES_DIR)/framework-res.apk $(MIUI_EXT_RE
 				$(APKTOOL) if -p $(TARGET_OUT_DIR)/apktool $$res_file; \
 			done
 
+remove-rund-apks:
+	@echo ">>> remove all unnecessary apks from original ZIP file..."
+	$(hide) rm -rf $(addprefix $(ZIP_DIR)/system/app/, $(RUNDAPKS))
+	$(hide) rm -rf $(addprefix $(ZIP_DIR)/system/priv-app/, $(RUNDAPKS))
+	@echo "<<< remove done!"
+
 pre-zip-misc: set-build-prop add-device-feature
 pre-zip-misc: merge-preloaded-classes insertkeys-mac_permissions
 pre-zip-misc: patch-bootimg
@@ -293,8 +301,8 @@ patch-bootimg: $(PATCH_BOOTIMG_SH) $(UNPACKBOOTIMG) $(MKBOOTFS) $(MKBOOTIMG) $(T
 
 target_files: $(STOCKROM_DIR) | $(ZIP_DIR) 
 target_files: add-miui-prebuilt
-target_files: $(TARGET_APPS)
 target_files: $(TARGET_FRAMEWORK_DIR)/framework-res.apk $(TARGET_FRAMEWORK_DIR)/framework-ext-res/framework-ext-res.apk
+target_files: $(TARGET_APPS)
 target_files: $(ZIP_BLDJARS) $(ACT_PRE_ZIP)
 
 # Target to make zipfile which is all signed by testkey. convenient for developement and debug
